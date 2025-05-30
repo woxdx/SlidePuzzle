@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8">
+    <title>Slide Puzzle</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            text-align: center;
+            color: #121100;
+        }
+    
+        #title-container {
+            position: relative;
+            height: 12.5rem;
+            width: 31.25rem;
+            margin: 0 auto;
+        }
+    
+        #title {
+            height: 12.5rem;
+            width: 31.25rem;
+        }
+    
+        #click-area {
+            position: absolute;
+            top: 3.75rem;
+            left: 14.375rem;
+            width: 3.125rem;
+            height: 3.125rem;
+            cursor: pointer;
+        }
+    
+        #board {
+            width: 24.75rem;
+            height: 24.75rem;
+            background-color: #121100;
+            border: 0.35rem solid #121100;
+            margin: 0 auto;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+    
+        #board img {
+            flex: 1 0 calc(100% / 3 - 0.1rem);
+            max-width: calc(100% / 3 - 0.004rem); 
+            max-height: calc(100% / 3 - 0.003rem); 
+            border: 0.0625rem solid #121100;
+            box-sizing: border-box; 
+        }
+    
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            opacity: 0.7;
+            animation: confetti 2s linear;
+        }
+    
+        .confetti.red {
+            background-color: red;
+        }
+    
+        .confetti.blue {
+            background-color: blue;
+        }
+    
+        .confetti.green {
+            background-color: green;
+        }
+    
+        .confetti.yellow {
+            background-color: yellow;
+        }
+    
+        @keyframes confetti {
+            0% {
+                transform: translateY(0) scale(1) rotate(0);
+                opacity: 1;
+            }
+    
+            100% {
+                transform: translateY(300px) scale(0.5) rotate(360deg);
+                opacity: 0;
+            }
+        }
+    
+        #gameCompleteMessage {
+            display: none;
+            font-size: 2rem;
+            color: red;
+            margin-top: 1.25rem;
+        }
+    
+        #turns {
+            margin-top: 1.25rem;
+        }
+    
+        #poketball {
+            margin-top: 0.3125rem;
+            display: none;
+            width: 8.125rem;
+            height: 8.125rem;
+            animation: spin 3s linear infinite;
+            cursor: pointer;
+            margin-left: 12.5rem;
+        }
+    
+        #tag {
+            display: none;
+            width: 11.25rem;
+            height: 5rem;
+            margin-bottom: 1.875rem;
+        }
+    
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="title-container">
+        <img id="title" src="./logo.png">
+        <div id="click-area"></div>
+    </div>
+    <div id="board"></div>
+    <div id="gameCompleteMessage">Game Complete!</div>
+    <h1 id="turns">Turns: <span>0</span></h1>
+    <img id="poketball" src="poketball.png" onclick="restartGame()">
+    <img id="tag" src="tag.png">
+
+    <script>
+        const rows = 3;
+        const columns = 3;
+    
+        let currTile, otherTile;
+        let turns = 0;
+        const imgTurn = ["4", "2", "8", "5", "1", "6", "7", "3"];
+    
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+    
+        window.onload = function () {
+            shuffleArray(imgTurn); 
+    
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < columns; c++) {
+                    const tile = document.createElement("img");
+                    tile.id = `${r}-${c}`;
+    
+                    tile.src = (r === rows - 1 && c === columns - 1) ? "9.png" : imgTurn.shift() + ".png";
+    
+                    tile.addEventListener("dragstart", dragStart);
+                    tile.addEventListener("dragover", dragOver);
+                    tile.addEventListener("dragenter", dragEnter);
+                    tile.addEventListener("dragleave", dragLeave);
+                    tile.addEventListener("drop", dragDrop);
+                    tile.addEventListener("dragend", dragEnd);
+    
+                    document.getElementById("board").append(tile);
+                }
+            }
+    
+            document.getElementById("click-area").addEventListener("click", onLogoClick);
+        }
+    
+        function dragStart() {
+            currTile = this;
+        }
+    
+        function dragOver(e) {
+            e.preventDefault();
+        }
+    
+        function dragEnter(e) {
+            e.preventDefault();
+        }
+    
+        function dragLeave() {}
+    
+        function dragDrop() {
+            otherTile = this;
+        }
+    
+        function dragEnd() {
+            if (!otherTile.src.includes("9.png")) return;
+    
+            const [r, c] = currTile.id.split("-").map(Number);
+            const [r2, c2] = otherTile.id.split("-").map(Number);
+    
+            const isAdjacent = (r === r2 && Math.abs(c - c2) === 1) || (c === c2 && Math.abs(r - r2) === 1);
+    
+            if (isAdjacent) {
+                [currTile.src, otherTile.src] = [otherTile.src, currTile.src];
+                document.querySelector("#turns span").innerText = ++turns;
+                checkWin();
+            }
+        }
+    
+        function checkWin() {
+            const tiles = Array.from(document.querySelectorAll("#board img"));
+            const correctOrder = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
+    
+            if (tiles.every((tile, index) => tile.src.includes(correctOrder[index]))) {
+                showConfetti();
+                document.getElementById("gameCompleteMessage").style.display = "block";
+                document.getElementById("poketball").style.display = "inline-block";
+                document.getElementById("tag").style.display = "inline-block";
+                disableTileEvents();
+            }
+        }
+    
+        function disableTileEvents() {
+            const tiles = document.querySelectorAll("#board img");
+            tiles.forEach(tile => {
+                tile.removeEventListener("dragstart", dragStart);
+                tile.removeEventListener("dragover", dragOver);
+                tile.removeEventListener("dragenter", dragEnter);
+                tile.removeEventListener("dragleave", dragLeave);
+                tile.removeEventListener("drop", dragDrop);
+                tile.removeEventListener("dragend", dragEnd);
+            });
+        }
+    
+        function showConfetti() {
+            const board = document.getElementById("board");
+    
+            for (let i = 0; i < 100; i++) {
+                const confetti = document.createElement("div");
+                confetti.classList.add("confetti", randomColor());
+                confetti.style.left = `${Math.random() * board.clientWidth}px`;
+                confetti.style.top = `${Math.random() * board.clientHeight}px`;
+                board.appendChild(confetti);
+    
+                setTimeout(() => confetti.remove(), 1000);
+            }
+        }
+    
+        function randomColor() {
+            return ["red", "blue", "green", "yellow"][Math.floor(Math.random() * 4)];
+        }
+    
+        function onLogoClick() {
+            const tiles = Array.from(document.querySelectorAll("#board img"));
+    
+            tiles.forEach((tile, index) => {
+                tile.src = `${index + 1}.png`;
+            });
+    
+            document.getElementById("gameCompleteMessage").style.display = "block";
+            document.getElementById("poketball").style.display = "inline-block";
+            document.getElementById("tag").style.display = "inline-block";
+    
+            showConfetti();
+            document.getElementById("click-area").removeEventListener("click", onLogoClick);
+            disableTileEvents();
+        }
+    
+        function restartGame() {
+            const board = document.getElementById("board");
+            board.innerHTML = "";
+    
+            turns = 0;
+            document.querySelector("#turns span").innerText = turns;
+    
+            imgTurn.length = 0;
+            imgTurn.push("4", "2", "8", "5", "1", "6", "7", "3");
+            shuffleArray(imgTurn);
+    
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < columns; c++) {
+                    const tile = document.createElement("img");
+                    tile.id = `${r}-${c}`;
+    
+                    tile.src = (r === rows - 1 && c === columns - 1) ? "9.png" : imgTurn.shift() + ".png";
+    
+                    tile.addEventListener("dragstart", dragStart);
+                    tile.addEventListener("dragover", dragOver);
+                    tile.addEventListener("dragenter", dragEnter);
+                    tile.addEventListener("dragleave", dragLeave);
+                    tile.addEventListener("drop", dragDrop);
+                    tile.addEventListener("dragend", dragEnd);
+    
+                    board.appendChild(tile);
+                }
+            }
+    
+            document.getElementById("gameCompleteMessage").style.display = "none";
+            document.getElementById("poketball").style.display = "none";
+            document.getElementById("tag").style.display = "none";
+    
+            document.getElementById("click-area").addEventListener("click", onLogoClick);
+        }
+    </script>
+</body>
+</html>
